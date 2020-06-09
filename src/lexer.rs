@@ -13,11 +13,18 @@ pub enum Token {
 pub struct Lexer {
     input: Vec<char>,
     position: usize,
+    row: usize,
+    column: usize,
 }
 
 impl Lexer {
     pub fn new(input: Vec<char>) -> Lexer {
-        Lexer { input, position: 0 }
+        Lexer {
+            input,
+            position: 0,
+            row: 0,
+            column: 0,
+        }
     }
 
     pub fn token(&mut self) -> Option<Token> {
@@ -71,7 +78,7 @@ impl Lexer {
 
     fn token_value(&mut self) -> Option<Token> {
         let mut selector = self.curr()?.to_string();
-        while self.peek().is_some() && Self::is_selector(self.peek().unwrap()) {
+        while self.peek().is_some() && Self::is_value(self.peek().unwrap()) {
             self.next();
             selector = selector + &self.curr()?.to_string();
         }
@@ -79,6 +86,12 @@ impl Lexer {
     }
 
     fn next(&mut self) {
+        if self.curr() == Some(&'\n') {
+            self.column = 0;
+            self.row += 1;
+        } else {
+            self.column += 1;
+        }
         self.position += 1;
     }
 
@@ -94,12 +107,15 @@ impl Lexer {
         self.input.get(self.position + 2)
     }
 
-    fn is_selector(c: &char) -> bool {
+    fn is_value(c: &char) -> bool {
         return match c {
+            &':' => false,
+            &';' => false,
             &',' => false,
             &'{' => false,
             &' ' => false,
             &'\t' => false,
+            &'\n' => false,
             _ => true,
         };
     }
@@ -142,6 +158,43 @@ mod selector {
         assert_eq!(lexer.token(), Some(Token::Value(".a".to_string())));
         assert_eq!(lexer.token(), Some(Token::Value(".b".to_string())));
         assert_eq!(lexer.token(), Some(Token::LBrace));
+    }
+}
+
+#[cfg(test)]
+mod property {
+    use super::*;
+
+    #[test]
+    fn simple() {
+        let mut lexer = Lexer::new("color: red;".chars().collect());
+        assert_eq!(lexer.token(), Some(Token::Value("color".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Colon));
+        assert_eq!(lexer.token(), Some(Token::Value("red".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Semicolon));
+        assert_eq!(lexer.token(), None);
+    }
+
+    #[test]
+    fn multi_value_online() {
+        let mut lexer = Lexer::new("padding: 10px 1rem;".chars().collect());
+        assert_eq!(lexer.token(), Some(Token::Value("padding".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Colon));
+        assert_eq!(lexer.token(), Some(Token::Value("10px".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Value("1rem".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Semicolon));
+        assert_eq!(lexer.token(), None);
+    }
+
+    #[test]
+    fn multi_value_multi_line() {
+        let mut lexer = Lexer::new("padding: 10px\n1rem;".chars().collect());
+        assert_eq!(lexer.token(), Some(Token::Value("padding".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Colon));
+        assert_eq!(lexer.token(), Some(Token::Value("10px".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Value("1rem".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Semicolon));
+        assert_eq!(lexer.token(), None);
     }
 }
 
