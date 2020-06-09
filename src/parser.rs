@@ -1,10 +1,10 @@
 use crate::lexer::Lexer;
-use crate::lexer::Token;
+use crate::lexer::PToken;
 
 struct Parser {
     lexer: Lexer,
-    curr: Option<Token>,
-    peek: Option<Token>,
+    curr: Option<PToken>,
+    peek: Option<PToken>,
 }
 
 impl Parser {
