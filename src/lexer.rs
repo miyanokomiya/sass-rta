@@ -1,12 +1,10 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    Number(f64), // num
-    Plus,        // +
-    Minus,       // -
-    Asterisk,    // *
-    Slash,       // /
-    LParen,      // (
-    RParen,      // )
+    Selector(String), // #id .class div
+    Comma,            // ,
+    LBrace,           // {
+    RBrace,           // }
+    Backslash,        // \
 }
 
 pub struct Lexer {
@@ -24,27 +22,31 @@ impl Lexer {
         while self.curr().is_some() && self.curr().unwrap().is_whitespace() {
             self.next();
         }
+
         let curr = self.curr()?;
-        let token = if Self::is_number(curr) {
-            let mut number = vec![*curr];
-            while self.peek().is_some() && Self::is_number(self.peek().unwrap()) {
-                self.next();
-                number.push(*self.curr().unwrap());
-            }
-            String::from_iter(number)
-                .parse::<f64>()
-                .ok()
-                .and_then(|n| Some(Token::Number(n)))
-        } else {
-            match curr {
-                &'+' => Some(Token::Plus),
-                &'-' => Some(Token::Minus),
-                &'*' => Some(Token::Asterisk),
-                &'/' => Some(Token::Slash),
-                &'(' => Some(Token::LParen),
-                &')' => Some(Token::RParen),
-                _ => None,
-            }
+        let token = match curr {
+            &',' => Some(Token::Comma),
+            &'{' => Some(Token::LBrace),
+            &'}' => Some(Token::RBrace),
+            &'\\' => Some(Token::Backslash),
+            c => Some(Token::Selector(c.to_string())),
+        };
+        self.next();
+        return token;
+    }
+
+    fn tokenSelector(&mut self, curr: &char) -> Option<Token> {
+        use std::iter::FromIterator;
+        while self.curr().is_some() && self.curr().unwrap().is_whitespace() {
+            self.next();
+        }
+
+        let token = match curr {
+            &',' => Some(Token::Comma),
+            &'{' => Some(Token::LBrace),
+            &'}' => Some(Token::RBrace),
+            &'\\' => Some(Token::Backslash),
+            _ => None,
         };
         self.next();
         return token;
@@ -73,10 +75,11 @@ mod tests {
 
     #[test]
     fn test_lexer() {
-        let mut lexer = Lexer::new("1 + 2".chars().collect());
-        assert_eq!(lexer.token(), Some(Token::Number(1_f64)));
-        assert_eq!(lexer.token(), Some(Token::Plus));
-        assert_eq!(lexer.token(), Some(Token::Number(2_f64)));
+        let mut lexer = Lexer::new(".a { }".chars().collect());
+        assert_eq!(lexer.token(), Some(Token::Selector(".".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Selector("a".to_string())));
+        assert_eq!(lexer.token(), Some(Token::LBrace));
+        assert_eq!(lexer.token(), Some(Token::RBrace));
         assert_eq!(lexer.token(), None);
     }
 }
