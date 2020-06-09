@@ -106,11 +106,11 @@ impl Lexer {
 }
 
 #[cfg(test)]
-mod tests {
+mod selector {
     use super::*;
 
     #[test]
-    fn test_lexer_1() {
+    fn single() {
         let mut lexer = Lexer::new(".a { }".chars().collect());
         assert_eq!(lexer.token(), Some(Token::Value(".a".to_string())));
         assert_eq!(lexer.token(), Some(Token::LBrace));
@@ -119,8 +119,8 @@ mod tests {
     }
 
     #[test]
-    fn test_lexer_2() {
-        let mut lexer = Lexer::new(".aa, .bb { }".chars().collect());
+    fn multi() {
+        let mut lexer = Lexer::new(".aa, .bb {".chars().collect());
         assert_eq!(lexer.token(), Some(Token::Value(".aa".to_string())));
         assert_eq!(lexer.token(), Some(Token::Comma));
         assert_eq!(lexer.token(), Some(Token::Value(".bb".to_string())));
@@ -128,8 +128,8 @@ mod tests {
     }
 
     #[test]
-    fn test_lexer_3() {
-        let mut lexer = Lexer::new(".a,\n.b { }".chars().collect());
+    fn multi_line() {
+        let mut lexer = Lexer::new(".a,\n.b {".chars().collect());
         assert_eq!(lexer.token(), Some(Token::Value(".a".to_string())));
         assert_eq!(lexer.token(), Some(Token::Comma));
         assert_eq!(lexer.token(), Some(Token::Value(".b".to_string())));
@@ -137,23 +137,34 @@ mod tests {
     }
 
     #[test]
-    fn test_lexer_4() {
-        let mut lexer = Lexer::new(".a .b { }".chars().collect());
+    fn nested() {
+        let mut lexer = Lexer::new(".a .b {".chars().collect());
         assert_eq!(lexer.token(), Some(Token::Value(".a".to_string())));
         assert_eq!(lexer.token(), Some(Token::Value(".b".to_string())));
         assert_eq!(lexer.token(), Some(Token::LBrace));
     }
+}
+
+#[cfg(test)]
+mod line_comment {
+    use super::*;
 
     #[test]
-    fn test_lexer_line_comment() {
-        let mut lexer = Lexer::new(".a // abc \n".chars().collect());
+    fn test() {
+        let mut lexer = Lexer::new(".a // abc \n.b".chars().collect());
         assert_eq!(lexer.token(), Some(Token::Value(".a".to_string())));
         assert_eq!(lexer.token(), Some(Token::Comment("// abc ".to_string())));
+        assert_eq!(lexer.token(), Some(Token::Value(".b".to_string())));
         assert_eq!(lexer.token(), None);
     }
+}
+
+#[cfg(test)]
+mod block_comment {
+    use super::*;
 
     #[test]
-    fn test_lexer_block_comment_1() {
+    fn online() {
         let mut lexer = Lexer::new(".a /* abc */ {".chars().collect());
         assert_eq!(lexer.token(), Some(Token::Value(".a".to_string())));
         assert_eq!(lexer.token(), Some(Token::Comment("/* abc */".to_string())));
@@ -162,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lexer_block_comment_2() {
+    fn multiline() {
         let mut lexer = Lexer::new(".a /*\n abc \n*/ {".chars().collect());
         assert_eq!(lexer.token(), Some(Token::Value(".a".to_string())));
         assert_eq!(
