@@ -1,46 +1,35 @@
 use clap::App;
 
 fn main() {
-    let matches = App::new("MyApp")
+    let matches = App::new("sass-rta")
         .version("0.0.1")
         .about("Does awesome things")
-        .arg("-c, --config=[FILE] 'Sets a custom config file'")
-        .arg("<output> 'Sets an optional output file'")
-        .arg("-d... 'Turn debugging information on'")
+        .arg("-d, --dry-run 'Only prints results'")
         .subcommand(
-            App::new("test")
-                .about("does testing things")
-                .arg("-l, --list 'lists test values'"),
+            App::new("write")
+                .about("write markings")
+                .arg("<target> 'Sets an optional target file'"),
+        )
+        .subcommand(
+            App::new("reset")
+                .about("reset markings")
+                .arg("<target> 'Sets an optional target file'"),
         )
         .get_matches();
 
-    // You can check the value provided by positional arguments, or option arguments
-    if let Some(o) = matches.value_of("output") {
-        println!("Value for output: {}", o);
+    if matches.is_present("dry-run") {
+        println!("[dry run]");
     }
 
-    if let Some(c) = matches.value_of("config") {
-        println!("Value for config: {}", c);
+    if let Some(ref matches) = matches.subcommand_matches("write") {
+        if let Some(o) = matches.value_of("target") {
+            println!("write: Value for target: {}", o);
+        }
     }
 
-    // You can see how many times a particular flag or argument occurred
-    // Note, only flags can have multiple occurrences
-    match matches.occurrences_of("d") {
-        0 => println!("Debug mode is off"),
-        1 => println!("Debug mode is kind of on"),
-        2 => println!("Debug mode is on"),
-        _ => println!("Don't be crazy"),
-    }
-
-    // You can check for the existence of subcommands, and if found use their
-    // matches just as you would the top level app
-    if let Some(ref matches) = matches.subcommand_matches("test") {
-        // "$ myapp test" was run
-        if matches.is_present("list") {
-            // "$ myapp test -l" was run
-            println!("Printing testing lists...");
-        } else {
-            println!("Not printing testing lists...");
+    if let Some(ref matches) = matches.subcommand_matches("reset") {
+        if let Some(o) = matches.value_of("target") {
+            println!("reset: Value for target: {}", o);
         }
     }
 
