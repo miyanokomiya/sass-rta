@@ -1,4 +1,6 @@
 use clap::App;
+mod lexer;
+mod parser;
 
 fn main() {
     let matches = App::new("sass-rta")
