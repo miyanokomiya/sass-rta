@@ -7,7 +7,7 @@ pub enum Token {
     RBrace,          // }
     Colon,           // :
     Semicolon,       // ;
-                     // Backslash,        // \ TODO: escaping
+    Backslash,       // \
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -28,6 +28,7 @@ pub struct Lexer {
     position: usize,
     row: usize,
     column: usize,
+    escaping: bool,
 }
 
 impl Lexer {
@@ -37,6 +38,7 @@ impl Lexer {
             position: 0,
             row: 0,
             column: 0,
+            escaping: false,
         }
     }
 
@@ -45,9 +47,13 @@ impl Lexer {
             self.skip_whitespace();
         }
 
+        self.escaping = false;
         let from = self.curr_cursor();
 
-        let token = if self.curr()? == &'/' && self.peek()? == &'/' {
+        let token = if self.curr()? == &'\\' {
+            self.escaping = true;
+            self.token_value()?
+        } else if self.curr()? == &'/' && self.peek()? == &'/' {
             self.token_line_comment()?
         } else if self.curr()? == &'/' && self.peek()? == &'*' {
             self.token_block_comment()?
@@ -123,7 +129,7 @@ impl Lexer {
 
     fn token_value(&mut self) -> Option<Token> {
         let mut value = self.curr()?.to_string();
-        while self.peek().is_some() && Self::is_value(self.peek().unwrap()) {
+        while self.peek().is_some() && (self.escaping || Self::is_value(self.peek().unwrap())) {
             self.next();
 
             if self.curr() == Some(&'\'') {
@@ -138,6 +144,12 @@ impl Lexer {
                 };
             } else {
                 value = value + &self.curr()?.to_string();
+            }
+
+            if self.curr()? == &'\\' {
+                self.escaping = !self.escaping;
+            } else {
+                self.escaping = false
             }
         }
         return Some(Token::Value(value));
@@ -277,6 +289,16 @@ mod selector {
         let mut lexer = Lexer::new(".a .b {".chars().collect());
         assert_eq!(lexer.token().unwrap().token, Token::Value(".a".to_string()));
         assert_eq!(lexer.token().unwrap().token, Token::Value(".b".to_string()));
+        assert_eq!(lexer.token().unwrap().token, Token::LBrace);
+    }
+
+    #[test]
+    fn escaped() {
+        let mut lexer = Lexer::new(".a\\:b {".chars().collect());
+        assert_eq!(
+            lexer.token().unwrap().token,
+            Token::Value(".a\\:b".to_string())
+        );
         assert_eq!(lexer.token().unwrap().token, Token::LBrace);
     }
 }
