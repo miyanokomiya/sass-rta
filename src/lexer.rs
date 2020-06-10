@@ -58,6 +58,8 @@ impl Lexer {
                 &'}' => Token::RBrace,
                 &':' => Token::Colon,
                 &';' => Token::Semicolon,
+                &'\'' => self.token_single_quote_value()?,
+                &'"' => self.token_double_quote_value()?,
                 _ => self.token_value()?,
             }
         };
@@ -98,13 +100,47 @@ impl Lexer {
         return Some(Token::Comment(line_comment));
     }
 
+    fn token_enclosed_value(&mut self, closed: &char) -> Option<Token> {
+        let mut value = self.curr()?.to_string();
+        while self.peek().is_some() {
+            self.next();
+            value = value + &self.curr()?.to_string();
+
+            if self.curr() == Some(closed) {
+                break;
+            }
+        }
+        return Some(Token::Value(value));
+    }
+
+    fn token_single_quote_value(&mut self) -> Option<Token> {
+        self.token_enclosed_value(&'\'')
+    }
+
+    fn token_double_quote_value(&mut self) -> Option<Token> {
+        self.token_enclosed_value(&'"')
+    }
+
     fn token_value(&mut self) -> Option<Token> {
-        let mut selector = self.curr()?.to_string();
+        let mut value = self.curr()?.to_string();
         while self.peek().is_some() && Self::is_value(self.peek().unwrap()) {
             self.next();
-            selector = selector + &self.curr()?.to_string();
+
+            if self.curr() == Some(&'\'') {
+                value = match self.token_single_quote_value()? {
+                    Token::Value(v) => value + &v,
+                    _ => value,
+                };
+            } else if self.curr() == Some(&'"') {
+                value = match self.token_double_quote_value()? {
+                    Token::Value(v) => value + &v,
+                    _ => value,
+                };
+            } else {
+                value = value + &self.curr()?.to_string();
+            }
         }
-        return Some(Token::Value(selector));
+        return Some(Token::Value(value));
     }
 
     fn next(&mut self) {
@@ -302,6 +338,26 @@ mod property {
             Token::Value("1rem".to_string())
         );
         assert_eq!(lexer.token().unwrap().token, Token::Semicolon);
+        assert_eq!(lexer.token(), None);
+    }
+
+    #[test]
+    fn single_quote_value() {
+        let mut lexer = Lexer::new("url('http://example.com')".chars().collect());
+        assert_eq!(
+            lexer.token().unwrap().token,
+            Token::Value("url('http://example.com')".to_string())
+        );
+        assert_eq!(lexer.token(), None);
+    }
+
+    #[test]
+    fn double_quote_value() {
+        let mut lexer = Lexer::new("url(\"http://example.com\")".chars().collect());
+        assert_eq!(
+            lexer.token().unwrap().token,
+            Token::Value("url(\"http://example.com\")".to_string())
+        );
         assert_eq!(lexer.token(), None);
     }
 }
