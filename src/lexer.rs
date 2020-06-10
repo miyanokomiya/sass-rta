@@ -112,8 +112,14 @@ impl Lexer {
             self.next();
             value = value + &self.curr()?.to_string();
 
-            if self.curr() == Some(closed) {
+            if !self.escaping && self.curr() == Some(closed) {
                 break;
+            }
+
+            if self.curr()? == &'\\' {
+                self.escaping = !self.escaping;
+            } else {
+                self.escaping = false
             }
         }
         return Some(Token::Value(value));
@@ -379,6 +385,26 @@ mod property {
         assert_eq!(
             lexer.token().unwrap().token,
             Token::Value("url(\"http://example.com\")".to_string())
+        );
+        assert_eq!(lexer.token(), None);
+    }
+
+    #[test]
+    fn single_quote_escaped_value() {
+        let mut lexer = Lexer::new("url('http://ex\\'ample.com')".chars().collect());
+        assert_eq!(
+            lexer.token().unwrap().token,
+            Token::Value("url('http://ex\\'ample.com')".to_string())
+        );
+        assert_eq!(lexer.token(), None);
+    }
+
+    #[test]
+    fn double_quote_escaped_value() {
+        let mut lexer = Lexer::new("url(\"http://ex\\\"ample.com\")".chars().collect());
+        assert_eq!(
+            lexer.token().unwrap().token,
+            Token::Value("url(\"http://ex\\\"ample.com\")".to_string())
         );
         assert_eq!(lexer.token(), None);
     }
