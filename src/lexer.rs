@@ -307,6 +307,31 @@ mod selector {
         );
         assert_eq!(lexer.token().unwrap().token, Token::LBrace);
     }
+
+    #[test]
+    fn prefix() {
+        let mut lexer = Lexer::new(".a:hover {".chars().collect());
+        assert_eq!(lexer.token().unwrap().token, Token::Value(".a".to_string()));
+        assert_eq!(lexer.token().unwrap().token, Token::Colon);
+        assert_eq!(
+            lexer.token().unwrap().token,
+            Token::Value("hover".to_string())
+        );
+        assert_eq!(lexer.token().unwrap().token, Token::LBrace);
+    }
+
+    #[test]
+    fn pseudo() {
+        let mut lexer = Lexer::new(".a::before {".chars().collect());
+        assert_eq!(lexer.token().unwrap().token, Token::Value(".a".to_string()));
+        assert_eq!(lexer.token().unwrap().token, Token::Colon);
+        assert_eq!(lexer.token().unwrap().token, Token::Colon);
+        assert_eq!(
+            lexer.token().unwrap().token,
+            Token::Value("before".to_string())
+        );
+        assert_eq!(lexer.token().unwrap().token, Token::LBrace);
+    }
 }
 
 #[cfg(test)]
