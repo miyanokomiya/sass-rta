@@ -6,7 +6,7 @@ use crate::lexer::Token;
 pub struct Scope {
     selectors: Vec<String>,
     properties: Vec<Property>,
-    children: Vec<Scope>,
+    children: Vec<Expr>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -46,15 +46,19 @@ impl Parser {
     fn parse_expression(&mut self) -> Vec<Expr> {
         let mut vec = vec![];
 
-        while self.peek.is_some() {
-            if self.is_property() {
+        while self.curr.is_some() {
+            if self.curr.clone().unwrap().token == Token::RBrace {
+                break;
+            } else if self.is_property() {
                 match self.parse_property() {
                     Some(p) => vec.push(Expr::Property(p)),
                     _ => (),
                 }
-            } else {
+            } else if self.is_scope() {
                 match self.parse_scope() {
-                    Some(s) => vec.push(Expr::Scope(s)),
+                    Some(s) => {
+                        vec.push(Expr::Scope(s));
+                    }
                     _ => (),
                 }
             }
@@ -73,7 +77,6 @@ impl Parser {
 
         // parse selectors
         while curr.is_some() {
-            println!("curr: {:?}", self.curr.clone());
             match curr?.token {
                 Token::Value(val) => value = value + &val + " ",
                 Token::Comma => {
@@ -91,18 +94,7 @@ impl Parser {
         }
 
         self.next();
-        curr = self.curr.clone();
-
-        // TODO
-        while curr.is_some() {
-            println!("curr: {:?}", self.curr.clone());
-            match curr?.token {
-                Token::RBrace => break,
-                _ => break,
-            };
-            self.next();
-            curr = self.curr.clone();
-        }
+        children = self.parse_expression();
 
         Some(Scope {
             selectors,
@@ -150,6 +142,22 @@ impl Parser {
             match pt.unwrap().token {
                 Token::Semicolon => return true,
                 Token::LBrace => return false,
+                _ => (),
+            };
+            pt = lexer.token();
+        }
+
+        false
+    }
+
+    fn is_scope(&mut self) -> bool {
+        let mut lexer = self.lexer.clone();
+
+        let mut pt = lexer.token();
+        while pt.is_some() {
+            match pt.unwrap().token {
+                Token::Semicolon => return false,
+                Token::LBrace => return true,
                 _ => (),
             };
             pt = lexer.token();
@@ -216,22 +224,50 @@ mod tests {
         );
     }
 
-    #[test]
-    fn selectors() {
-        do_parser(
-            ".a .b {}\n.c, .d {}",
-            vec![
-                Expr::Scope(Scope {
+    #[cfg(test)]
+    mod scope {
+        use super::*;
+
+        #[test]
+        fn selectors() {
+            do_parser(
+                ".a .b {}\n.c, .d {}",
+                vec![
+                    Expr::Scope(Scope {
+                        selectors: vec![".a .b".to_string()],
+                        properties: vec![],
+                        children: vec![],
+                    }),
+                    Expr::Scope(Scope {
+                        selectors: vec![".c".to_string(), ".d".to_string()],
+                        properties: vec![],
+                        children: vec![],
+                    }),
+                ],
+            );
+        }
+
+        #[test]
+        fn nested_selectors() {
+            do_parser(
+                ".a .b { .c, .d {} #e, #f {} }",
+                vec![Expr::Scope(Scope {
                     selectors: vec![".a .b".to_string()],
                     properties: vec![],
-                    children: vec![],
-                }),
-                Expr::Scope(Scope {
-                    selectors: vec![".c".to_string(), ".d".to_string()],
-                    properties: vec![],
-                    children: vec![],
-                }),
-            ],
-        );
+                    children: vec![
+                        Expr::Scope(Scope {
+                            selectors: vec![".c".to_string(), ".d".to_string()],
+                            properties: vec![],
+                            children: vec![],
+                        }),
+                        Expr::Scope(Scope {
+                            selectors: vec!["#e".to_string(), "#f".to_string()],
+                            properties: vec![],
+                            children: vec![],
+                        }),
+                    ],
+                })],
+            );
+        }
     }
 }
