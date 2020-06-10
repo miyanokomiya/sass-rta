@@ -1,5 +1,25 @@
 use crate::lexer::Lexer;
 use crate::lexer::PToken;
+use crate::lexer::Token;
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Scope {
+    selectors: Vec<String>,
+    properties: Vec<Property>,
+    children: Vec<Scope>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Property {
+    key: String,
+    value: String,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum Expr {
+    Scope(Scope),
+    Property(Property),
+}
 
 struct Parser {
     lexer: Lexer,
@@ -19,8 +39,100 @@ impl Parser {
         self.peek = self.lexer.token();
     }
 
-    fn parse(&mut self) -> &str {
-        return "aa";
+    fn parse(&mut self) -> Vec<Expr> {
+        self.parse_expression()
+    }
+
+    fn parse_expression(&mut self) -> Vec<Expr> {
+        let mut vec = vec![];
+
+        while self.peek.is_some() {
+            println!("curr: {:?}", self.curr.clone());
+            if self.is_property() {
+                match self.parse_property() {
+                    Some(p) => vec.push(Expr::Property(p)),
+                    _ => (),
+                }
+            } else {
+                match self.parse_scope() {
+                    Some(s) => vec.push(Expr::Scope(s)),
+                    _ => (),
+                }
+            }
+            self.next();
+        }
+
+        vec
+    }
+
+    fn parse_scope(&mut self) -> Option<Scope> {
+        Some(Scope {
+            selectors: vec![".a".to_string()],
+            properties: vec![],
+            children: vec![],
+        })
+    }
+
+    fn parse_property(&mut self) -> Option<Property> {
+        match self.curr.clone()?.token {
+            Token::Value(key) => {
+                self.next();
+                self.next(); // skip :
+                let value = self.parse_property_value()?;
+                let prop = Property { key, value };
+                Some(prop)
+            }
+            _ => None,
+        }
+    }
+
+    fn parse_property_value(&mut self) -> Option<String> {
+        let mut curr = self.curr.clone();
+        let mut value = " ".to_string();
+
+        while curr.is_some() {
+            match curr?.token {
+                Token::Value(val) => value = value + &val + " ",
+                Token::Semicolon => break,
+                Token::RBrace => break,
+                _ => break,
+            };
+            self.next();
+            curr = self.curr.clone();
+        }
+
+        Some(value.trim().to_string())
+    }
+
+    fn is_property(&mut self) -> bool {
+        let mut lexer = self.lexer.clone();
+
+        let mut pt = lexer.token();
+        while pt.is_some() {
+            match pt.unwrap().token {
+                Token::Semicolon => return true,
+                Token::LBrace => return false,
+                _ => (),
+            };
+            pt = lexer.token();
+        }
+
+        false
+    }
+
+    fn next_not_value_token(&mut self) -> Option<Token> {
+        let mut lexer = self.lexer.clone();
+
+        let mut pt = lexer.token();
+        while pt.is_some() {
+            match pt?.token {
+                Token::Value(_) => (),
+                t => return Some(t),
+            };
+            pt = lexer.token();
+        }
+
+        None
     }
 }
 
@@ -28,13 +140,41 @@ impl Parser {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_parser() {
-        do_parser("1 + 2", "aa");
-    }
-    fn do_parser(input: &str, expect: &str) {
+    fn do_parser(input: &str, expect: Vec<Expr>) {
         let lexer = Lexer::new(input.chars().collect());
         let mut parser = Parser::new(lexer);
         assert_eq!(parser.parse(), expect);
+    }
+
+    #[test]
+    fn property() {
+        do_parser(
+            "color: red;\npadding: 1px 1rem; margin: 0 1px 2px;",
+            vec![
+                Expr::Property(Property {
+                    key: "color".to_string(),
+                    value: "red".to_string(),
+                }),
+                Expr::Property(Property {
+                    key: "padding".to_string(),
+                    value: "1px 1rem".to_string(),
+                }),
+                Expr::Property(Property {
+                    key: "margin".to_string(),
+                    value: "0 1px 2px".to_string(),
+                }),
+            ],
+        );
+    }
+
+    #[test]
+    fn variable() {
+        do_parser(
+            "$primary: #123456;",
+            vec![Expr::Property(Property {
+                key: "$primary".to_string(),
+                value: "#123456".to_string(),
+            })],
+        );
     }
 }

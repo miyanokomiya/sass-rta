@@ -7,14 +7,13 @@ pub enum Token {
     RBrace,          // }
     Colon,           // :
     Semicolon,       // ;
-    Backslash,       // \
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PToken {
-    token: Token,
-    from: Cursor,
-    to: Cursor,
+    pub token: Token,
+    pub from: Cursor,
+    pub to: Cursor,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -23,6 +22,7 @@ pub struct Cursor {
     column: usize,
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Lexer {
     input: Vec<char>,
     position: usize,
