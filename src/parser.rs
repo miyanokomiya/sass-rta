@@ -153,7 +153,7 @@ impl Parser {
     fn is_scope(&mut self) -> bool {
         let mut lexer = self.lexer.clone();
 
-        let mut pt = lexer.token();
+        let mut pt = self.peek.clone();
         while pt.is_some() {
             match pt.unwrap().token {
                 Token::Semicolon => return false,
@@ -229,7 +229,26 @@ mod tests {
         use super::*;
 
         #[test]
-        fn selectors() {
+        fn selectors_1() {
+            do_parser(
+                ".a {}\n.c {}",
+                vec![
+                    Expr::Scope(Scope {
+                        selectors: vec![".a".to_string()],
+                        properties: vec![],
+                        children: vec![],
+                    }),
+                    Expr::Scope(Scope {
+                        selectors: vec![".c".to_string()],
+                        properties: vec![],
+                        children: vec![],
+                    }),
+                ],
+            );
+        }
+
+        #[test]
+        fn selectors_2() {
             do_parser(
                 ".a .b {}\n.c, .d {}",
                 vec![
@@ -250,7 +269,7 @@ mod tests {
         #[test]
         fn nested_selectors() {
             do_parser(
-                ".a .b { .c, .d {} #e, #f {} }",
+                ".a .b { .c, .d {} #e {} }",
                 vec![Expr::Scope(Scope {
                     selectors: vec![".a .b".to_string()],
                     properties: vec![],
@@ -261,7 +280,7 @@ mod tests {
                             children: vec![],
                         }),
                         Expr::Scope(Scope {
-                            selectors: vec!["#e".to_string(), "#f".to_string()],
+                            selectors: vec!["#e".to_string()],
                             properties: vec![],
                             children: vec![],
                         }),
