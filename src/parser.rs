@@ -47,7 +47,6 @@ impl Parser {
         let mut vec = vec![];
 
         while self.peek.is_some() {
-            println!("curr: {:?}", self.curr.clone());
             if self.is_property() {
                 match self.parse_property() {
                     Some(p) => vec.push(Expr::Property(p)),
@@ -66,10 +65,49 @@ impl Parser {
     }
 
     fn parse_scope(&mut self) -> Option<Scope> {
+        let mut curr = self.curr.clone();
+        let mut selectors = vec![];
+        let mut properties = vec![];
+        let mut children = vec![];
+        let mut value = "".to_string();
+
+        // parse selectors
+        while curr.is_some() {
+            println!("curr: {:?}", self.curr.clone());
+            match curr?.token {
+                Token::Value(val) => value = value + &val + " ",
+                Token::Comma => {
+                    selectors.push(value.trim().to_string());
+                    value = "".to_string();
+                }
+                Token::LBrace => {
+                    selectors.push(value.trim().to_string());
+                    break;
+                }
+                _ => break,
+            };
+            self.next();
+            curr = self.curr.clone();
+        }
+
+        self.next();
+        curr = self.curr.clone();
+
+        // TODO
+        while curr.is_some() {
+            println!("curr: {:?}", self.curr.clone());
+            match curr?.token {
+                Token::RBrace => break,
+                _ => break,
+            };
+            self.next();
+            curr = self.curr.clone();
+        }
+
         Some(Scope {
-            selectors: vec![".a".to_string()],
-            properties: vec![],
-            children: vec![],
+            selectors,
+            properties,
+            children,
         })
     }
 
@@ -77,7 +115,7 @@ impl Parser {
         match self.curr.clone()?.token {
             Token::Value(key) => {
                 self.next();
-                self.next(); // skip :
+                self.next(); // skip ':'
                 let value = self.parse_property_value()?;
                 let prop = Property { key, value };
                 Some(prop)
@@ -88,7 +126,7 @@ impl Parser {
 
     fn parse_property_value(&mut self) -> Option<String> {
         let mut curr = self.curr.clone();
-        let mut value = " ".to_string();
+        let mut value = "".to_string();
 
         while curr.is_some() {
             match curr?.token {
@@ -175,6 +213,25 @@ mod tests {
                 key: "$primary".to_string(),
                 value: "#123456".to_string(),
             })],
+        );
+    }
+
+    #[test]
+    fn selectors() {
+        do_parser(
+            ".a .b {}\n.c, .d {}",
+            vec![
+                Expr::Scope(Scope {
+                    selectors: vec![".a .b".to_string()],
+                    properties: vec![],
+                    children: vec![],
+                }),
+                Expr::Scope(Scope {
+                    selectors: vec![".c".to_string(), ".d".to_string()],
+                    properties: vec![],
+                    children: vec![],
+                }),
+            ],
         );
     }
 }
