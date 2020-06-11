@@ -5,7 +5,6 @@ use crate::lexer::Token;
 #[derive(Debug, PartialEq, Clone)]
 pub struct Scope {
     selectors: Vec<String>,
-    properties: Vec<Property>,
     children: Vec<Expr>,
 }
 
@@ -71,9 +70,9 @@ impl Parser {
     fn parse_scope(&mut self) -> Option<Scope> {
         let mut curr = self.curr.clone();
         let mut selectors = vec![];
-        let mut properties = vec![];
-        let mut children = vec![];
         let mut value = "".to_string();
+
+        println!("curr: {:?}", curr);
 
         // parse selectors
         while curr.is_some() {
@@ -87,6 +86,7 @@ impl Parser {
                     selectors.push(value.trim().to_string());
                     break;
                 }
+                Token::Colon => value = value.trim().to_string() + ":",
                 _ => break,
             };
             self.next();
@@ -94,11 +94,10 @@ impl Parser {
         }
 
         self.next();
-        children = self.parse_expression();
+        let children = self.parse_expression();
 
         Some(Scope {
             selectors,
-            properties,
             children,
         })
     }
@@ -235,12 +234,10 @@ mod tests {
                 vec![
                     Expr::Scope(Scope {
                         selectors: vec![".a".to_string()],
-                        properties: vec![],
                         children: vec![],
                     }),
                     Expr::Scope(Scope {
                         selectors: vec![".c".to_string()],
-                        properties: vec![],
                         children: vec![],
                     }),
                 ],
@@ -254,12 +251,27 @@ mod tests {
                 vec![
                     Expr::Scope(Scope {
                         selectors: vec![".a .b".to_string()],
-                        properties: vec![],
                         children: vec![],
                     }),
                     Expr::Scope(Scope {
                         selectors: vec![".c".to_string(), ".d".to_string()],
-                        properties: vec![],
+                        children: vec![],
+                    }),
+                ],
+            );
+        }
+
+        #[test]
+        fn pseudo() {
+            do_parser(
+                ".a:b {} .cc::ff {}",
+                vec![
+                    Expr::Scope(Scope {
+                        selectors: vec![".a:b".to_string()],
+                        children: vec![],
+                    }),
+                    Expr::Scope(Scope {
+                        selectors: vec![".cc::ff".to_string()],
                         children: vec![],
                     }),
                 ],
@@ -272,16 +284,13 @@ mod tests {
                 ".a .b { .c, .d {} #e {} }",
                 vec![Expr::Scope(Scope {
                     selectors: vec![".a .b".to_string()],
-                    properties: vec![],
                     children: vec![
                         Expr::Scope(Scope {
                             selectors: vec![".c".to_string(), ".d".to_string()],
-                            properties: vec![],
                             children: vec![],
                         }),
                         Expr::Scope(Scope {
                             selectors: vec!["#e".to_string()],
-                            properties: vec![],
                             children: vec![],
                         }),
                     ],
