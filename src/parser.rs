@@ -1,3 +1,4 @@
+use crate::lexer::Cursor;
 use crate::lexer::Lexer;
 use crate::lexer::PToken;
 use crate::lexer::Token;
@@ -6,6 +7,8 @@ use crate::lexer::Token;
 pub struct Scope {
     selectors: Vec<String>,
     children: Vec<Expr>,
+    from: Cursor,
+    to: Cursor,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -72,8 +75,10 @@ impl Parser {
         let mut selectors = vec![];
         let mut value = "".to_string();
 
+        let from = self.curr.clone()?.from;
+
         // parse selectors
-        while curr.is_some() {
+        while curr.clone().is_some() {
             match curr?.token {
                 Token::Value(val) => value = value + &val + " ",
                 Token::Comma => {
@@ -94,9 +99,13 @@ impl Parser {
         self.next();
         let children = self.parse_expression();
 
+        let to = self.curr.clone()?.from;
+
         Some(Scope {
             selectors,
             children,
+            from,
+            to,
         })
     }
 
@@ -233,10 +242,14 @@ mod tests {
                     Expr::Scope(Scope {
                         selectors: vec![".a".to_string()],
                         children: vec![],
+                        from: Cursor::new(0, 0),
+                        to: Cursor::new(0, 4),
                     }),
                     Expr::Scope(Scope {
                         selectors: vec![".c".to_string()],
                         children: vec![],
+                        from: Cursor::new(1, 0),
+                        to: Cursor::new(1, 4),
                     }),
                 ],
             );
@@ -250,10 +263,14 @@ mod tests {
                     Expr::Scope(Scope {
                         selectors: vec![".a .b".to_string()],
                         children: vec![],
+                        from: Cursor::new(0, 0),
+                        to: Cursor::new(0, 7),
                     }),
                     Expr::Scope(Scope {
                         selectors: vec![".c".to_string(), ".d".to_string()],
                         children: vec![],
+                        from: Cursor::new(1, 0),
+                        to: Cursor::new(1, 8),
                     }),
                 ],
             );
@@ -267,10 +284,14 @@ mod tests {
                     Expr::Scope(Scope {
                         selectors: vec![".a:b".to_string()],
                         children: vec![],
+                        from: Cursor::new(0, 0),
+                        to: Cursor::new(0, 6),
                     }),
                     Expr::Scope(Scope {
                         selectors: vec![".cc::ff".to_string()],
                         children: vec![],
+                        from: Cursor::new(0, 8),
+                        to: Cursor::new(0, 17),
                     }),
                 ],
             );
@@ -286,12 +307,18 @@ mod tests {
                         Expr::Scope(Scope {
                             selectors: vec![".c".to_string(), ".d".to_string()],
                             children: vec![],
+                            from: Cursor::new(0, 8),
+                            to: Cursor::new(0, 16),
                         }),
                         Expr::Scope(Scope {
                             selectors: vec!["#e".to_string()],
                             children: vec![],
+                            from: Cursor::new(0, 18),
+                            to: Cursor::new(0, 22),
                         }),
                     ],
+                    from: Cursor::new(0, 0),
+                    to: Cursor::new(0, 24),
                 })],
             );
         }
@@ -313,8 +340,12 @@ mod tests {
                                 key: "width".to_string(),
                                 value: "100px".to_string(),
                             })],
+                            from: Cursor::new(0, 17),
+                            to: Cursor::new(0, 36),
                         }),
                     ],
+                    from: Cursor::new(0, 0),
+                    to: Cursor::new(0, 38),
                 })],
             );
         }

@@ -21,6 +21,11 @@ pub struct Cursor {
     row: usize,
     column: usize,
 }
+impl Cursor {
+    pub fn new(row: usize, column: usize) -> Cursor {
+        Cursor { row, column }
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Lexer {
