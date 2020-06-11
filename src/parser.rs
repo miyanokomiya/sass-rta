@@ -72,8 +72,6 @@ impl Parser {
         let mut selectors = vec![];
         let mut value = "".to_string();
 
-        println!("curr: {:?}", curr);
-
         // parse selectors
         while curr.is_some() {
             match curr?.token {
@@ -136,7 +134,7 @@ impl Parser {
     fn is_property(&mut self) -> bool {
         let mut lexer = self.lexer.clone();
 
-        let mut pt = lexer.token();
+        let mut pt = self.peek.clone();
         while pt.is_some() {
             match pt.unwrap().token {
                 Token::Semicolon => return true,
@@ -168,7 +166,7 @@ impl Parser {
     fn next_not_value_token(&mut self) -> Option<Token> {
         let mut lexer = self.lexer.clone();
 
-        let mut pt = lexer.token();
+        let mut pt = self.peek.clone();
         while pt.is_some() {
             match pt?.token {
                 Token::Value(_) => (),
@@ -292,6 +290,29 @@ mod tests {
                         Expr::Scope(Scope {
                             selectors: vec!["#e".to_string()],
                             children: vec![],
+                        }),
+                    ],
+                })],
+            );
+        }
+
+        #[test]
+        fn with_property() {
+            do_parser(
+                ".a { color: red; .b { width: 100px; } }",
+                vec![Expr::Scope(Scope {
+                    selectors: vec![".a".to_string()],
+                    children: vec![
+                        Expr::Property(Property {
+                            key: "color".to_string(),
+                            value: "red".to_string(),
+                        }),
+                        Expr::Scope(Scope {
+                            selectors: vec![".b".to_string()],
+                            children: vec![Expr::Property(Property {
+                                key: "width".to_string(),
+                                value: "100px".to_string(),
+                            })],
                         }),
                     ],
                 })],
