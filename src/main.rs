@@ -1,4 +1,8 @@
+#[macro_use]
+extern crate lazy_static;
+
 use clap::App;
+mod ambuster;
 mod lexer;
 mod parser;
 

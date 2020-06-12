@@ -5,10 +5,10 @@ use crate::lexer::Token;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Scope {
-    selectors: Vec<String>,
-    children: Vec<Expr>,
-    from: Cursor,
-    to: Cursor,
+    pub selectors: Vec<String>,
+    pub children: Vec<Expr>,
+    pub from: Cursor,
+    pub to: Cursor,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -18,7 +18,7 @@ pub struct Property {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum Expr {
+pub enum Expr {
     Scope(Scope),
     Property(Property),
 }
@@ -189,7 +189,7 @@ impl Parser {
 }
 
 #[cfg(test)]
-mod tests {
+mod parser {
     use super::*;
 
     fn do_parser(input: &str, expect: Vec<Expr>) {
