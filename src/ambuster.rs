@@ -6,24 +6,19 @@ use crate::parser::Scope;
 use regex::Regex;
 
 impl Scope {
-    fn has_amp(&mut self) -> bool {
-        false
+    fn has_evil_amp(&mut self) -> bool {
+        self.selectors.iter().find(|s| has_evil_amp(s)).is_some()
     }
 }
 
 lazy_static! {
-    static ref RE: Regex =
-        Regex::new(r"(& )|(&\t)|(&\.)|(&:)|(&#)|(&\+)|(\+&)|(&>)|(>&)|(&~)|(~&)|(&\[)").unwrap();
+    static ref RE: Regex = Regex::new(r"([a-zA-Z0-9_\-]&)|(&[a-zA-Z0-9_\-])").unwrap();
 }
 
 fn has_evil_amp(s: &str) -> bool {
-    if !s.contains("&") {
-        return false;
-    }
-
     match RE.captures(s) {
-        Some(_) => false,
-        None => true,
+        Some(_) => true,
+        None => false,
     }
 }
 
@@ -35,8 +30,8 @@ mod ambuster {
     fn test_has_evil_amp_false() {
         assert_eq!(has_evil_amp(".a"), false);
         assert_eq!(has_evil_amp("& a a &"), false);
-        assert_eq!(has_evil_amp("&#a #a&"), false);
-        assert_eq!(has_evil_amp("&.a .a&"), false);
+        assert_eq!(has_evil_amp("&#a"), false);
+        assert_eq!(has_evil_amp("&.a"), false);
         assert_eq!(has_evil_amp("&:a a:&"), false);
         assert_eq!(has_evil_amp("&+a a+&"), false);
         assert_eq!(has_evil_amp("&>a a>&"), false);
