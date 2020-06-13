@@ -1,7 +1,7 @@
 extern crate regex;
+use crate::expression::Expr;
+use crate::expression::Scope;
 use crate::lexer::Cursor;
-use crate::parser::Expr;
-use crate::parser::Scope;
 
 use regex::Regex;
 

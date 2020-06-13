@@ -3,6 +3,7 @@ extern crate lazy_static;
 
 use clap::App;
 mod ambuster;
+mod expression;
 mod lexer;
 mod parser;
 

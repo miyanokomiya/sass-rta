@@ -12,18 +12,27 @@ pub enum Token {
 #[derive(Debug, PartialEq, Clone)]
 pub struct PToken {
     pub token: Token,
-    pub from: Cursor,
-    pub to: Cursor,
+    pub range: Range,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Cursor {
-    row: usize,
-    column: usize,
+    pub row: usize,
+    pub column: usize,
 }
 impl Cursor {
     pub fn new(row: usize, column: usize) -> Cursor {
         Cursor { row, column }
+    }
+}
+#[derive(Debug, PartialEq, Clone)]
+pub struct Range {
+    pub from: Cursor,
+    pub to: Cursor,
+}
+impl Range {
+    pub fn new(from: Cursor, to: Cursor) -> Range {
+        Range { from, to }
     }
 }
 
@@ -77,7 +86,10 @@ impl Lexer {
 
         let to = self.curr_cursor();
         self.next();
-        return Some(PToken { token, from, to });
+        return Some(PToken {
+            token,
+            range: Range::new(from, to),
+        });
     }
 
     fn skip_whitespace(&mut self) {
@@ -220,24 +232,21 @@ mod selector {
             lexer.token().unwrap(),
             PToken {
                 token: Token::Value(".a".to_string()),
-                from: Cursor { row: 0, column: 0 },
-                to: Cursor { row: 0, column: 1 }
+                range: Range::new(Cursor::new(0, 0), Cursor::new(0, 1)),
             }
         );
         assert_eq!(
             lexer.token().unwrap(),
             PToken {
                 token: Token::LBrace,
-                from: Cursor { row: 0, column: 3 },
-                to: Cursor { row: 0, column: 3 }
+                range: Range::new(Cursor::new(0, 3), Cursor::new(0, 3)),
             }
         );
         assert_eq!(
             lexer.token().unwrap(),
             PToken {
                 token: Token::RBrace,
-                from: Cursor { row: 0, column: 5 },
-                to: Cursor { row: 0, column: 5 }
+                range: Range::new(Cursor::new(0, 5), Cursor::new(0, 5)),
             }
         );
         assert_eq!(lexer.token(), None);
@@ -265,32 +274,28 @@ mod selector {
             lexer.token().unwrap(),
             PToken {
                 token: Token::Value(".a".to_string()),
-                from: Cursor { row: 0, column: 0 },
-                to: Cursor { row: 0, column: 1 }
+                range: Range::new(Cursor::new(0, 0), Cursor::new(0, 1)),
             }
         );
         assert_eq!(
             lexer.token().unwrap(),
             PToken {
                 token: Token::Comma,
-                from: Cursor { row: 0, column: 2 },
-                to: Cursor { row: 0, column: 2 }
+                range: Range::new(Cursor::new(0, 2), Cursor::new(0, 2)),
             }
         );
         assert_eq!(
             lexer.token().unwrap(),
             PToken {
                 token: Token::Value(".b".to_string()),
-                from: Cursor { row: 1, column: 0 },
-                to: Cursor { row: 1, column: 1 }
+                range: Range::new(Cursor::new(1, 0), Cursor::new(1, 1)),
             }
         );
         assert_eq!(
             lexer.token().unwrap(),
             PToken {
                 token: Token::LBrace,
-                from: Cursor { row: 1, column: 3 },
-                to: Cursor { row: 1, column: 3 }
+                range: Range::new(Cursor::new(1, 3), Cursor::new(1, 3)),
             }
         );
     }

@@ -1,27 +1,13 @@
+use crate::expression::Expr;
+use crate::expression::Import;
+use crate::expression::Include;
+use crate::expression::Property;
+use crate::expression::Scope;
 use crate::lexer::Cursor;
 use crate::lexer::Lexer;
 use crate::lexer::PToken;
+use crate::lexer::Range;
 use crate::lexer::Token;
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Scope {
-    pub selectors: Vec<String>,
-    pub children: Vec<Expr>,
-    pub from: Cursor,
-    pub to: Cursor,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Property {
-    key: String,
-    value: String,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Expr {
-    Scope(Scope),
-    Property(Property),
-}
 
 struct Parser {
     lexer: Lexer,
@@ -75,7 +61,7 @@ impl Parser {
         let mut selectors = vec![];
         let mut value = "".to_string();
 
-        let from = self.curr.clone()?.from;
+        let from = self.curr.clone()?.range.from;
 
         // parse selectors
         while curr.clone().is_some() {
@@ -99,23 +85,28 @@ impl Parser {
         self.next();
         let children = self.parse_expression();
 
-        let to = self.curr.clone()?.from;
+        let to = self.curr.clone()?.range.from;
 
         Some(Scope {
             selectors,
             children,
-            from,
-            to,
+            range: Range::new(from, to),
         })
     }
 
     fn parse_property(&mut self) -> Option<Property> {
+        let from = self.curr.clone()?.range.from;
         match self.curr.clone()?.token {
             Token::Value(key) => {
                 self.next();
                 self.next(); // skip ':'
                 let value = self.parse_property_value()?;
-                let prop = Property { key, value };
+                let to = self.curr.clone()?.range.from;
+                let prop = Property {
+                    key,
+                    value,
+                    range: Range::new(from, to),
+                };
                 Some(prop)
             }
             _ => None,
@@ -206,14 +197,17 @@ mod parser {
                 Expr::Property(Property {
                     key: "color".to_string(),
                     value: "red".to_string(),
+                    range: Range::new(Cursor::new(0, 0), Cursor::new(0, 10)),
                 }),
                 Expr::Property(Property {
                     key: "padding".to_string(),
                     value: "1px 1rem".to_string(),
+                    range: Range::new(Cursor::new(1, 0), Cursor::new(1, 17)),
                 }),
                 Expr::Property(Property {
                     key: "margin".to_string(),
                     value: "0 1px 2px".to_string(),
+                    range: Range::new(Cursor::new(1, 19), Cursor::new(1, 36)),
                 }),
             ],
         );
@@ -226,6 +220,7 @@ mod parser {
             vec![Expr::Property(Property {
                 key: "$primary".to_string(),
                 value: "#123456".to_string(),
+                range: Range::new(Cursor::new(0, 0), Cursor::new(0, 17)),
             })],
         );
     }
@@ -242,14 +237,12 @@ mod parser {
                     Expr::Scope(Scope {
                         selectors: vec![".a".to_string()],
                         children: vec![],
-                        from: Cursor::new(0, 0),
-                        to: Cursor::new(0, 4),
+                        range: Range::new(Cursor::new(0, 0), Cursor::new(0, 4)),
                     }),
                     Expr::Scope(Scope {
                         selectors: vec![".c".to_string()],
                         children: vec![],
-                        from: Cursor::new(1, 0),
-                        to: Cursor::new(1, 4),
+                        range: Range::new(Cursor::new(1, 0), Cursor::new(1, 4)),
                     }),
                 ],
             );
@@ -263,14 +256,12 @@ mod parser {
                     Expr::Scope(Scope {
                         selectors: vec![".a .b".to_string()],
                         children: vec![],
-                        from: Cursor::new(0, 0),
-                        to: Cursor::new(0, 7),
+                        range: Range::new(Cursor::new(0, 0), Cursor::new(0, 7)),
                     }),
                     Expr::Scope(Scope {
                         selectors: vec![".c".to_string(), ".d".to_string()],
                         children: vec![],
-                        from: Cursor::new(1, 0),
-                        to: Cursor::new(1, 8),
+                        range: Range::new(Cursor::new(1, 0), Cursor::new(1, 8)),
                     }),
                 ],
             );
@@ -284,14 +275,12 @@ mod parser {
                     Expr::Scope(Scope {
                         selectors: vec![".a:b".to_string()],
                         children: vec![],
-                        from: Cursor::new(0, 0),
-                        to: Cursor::new(0, 6),
+                        range: Range::new(Cursor::new(0, 0), Cursor::new(0, 6)),
                     }),
                     Expr::Scope(Scope {
                         selectors: vec![".cc::ff".to_string()],
                         children: vec![],
-                        from: Cursor::new(0, 8),
-                        to: Cursor::new(0, 17),
+                        range: Range::new(Cursor::new(0, 8), Cursor::new(0, 17)),
                     }),
                 ],
             );
@@ -307,18 +296,15 @@ mod parser {
                         Expr::Scope(Scope {
                             selectors: vec![".c".to_string(), ".d".to_string()],
                             children: vec![],
-                            from: Cursor::new(0, 8),
-                            to: Cursor::new(0, 16),
+                            range: Range::new(Cursor::new(0, 8), Cursor::new(0, 16)),
                         }),
                         Expr::Scope(Scope {
                             selectors: vec!["#e".to_string()],
                             children: vec![],
-                            from: Cursor::new(0, 18),
-                            to: Cursor::new(0, 22),
+                            range: Range::new(Cursor::new(0, 18), Cursor::new(0, 22)),
                         }),
                     ],
-                    from: Cursor::new(0, 0),
-                    to: Cursor::new(0, 24),
+                    range: Range::new(Cursor::new(0, 0), Cursor::new(0, 24)),
                 })],
             );
         }
@@ -333,19 +319,19 @@ mod parser {
                         Expr::Property(Property {
                             key: "color".to_string(),
                             value: "red".to_string(),
+                            range: Range::new(Cursor::new(0, 5), Cursor::new(0, 15)),
                         }),
                         Expr::Scope(Scope {
                             selectors: vec![".b".to_string()],
                             children: vec![Expr::Property(Property {
                                 key: "width".to_string(),
                                 value: "100px".to_string(),
+                                range: Range::new(Cursor::new(0, 22), Cursor::new(0, 34)),
                             })],
-                            from: Cursor::new(0, 17),
-                            to: Cursor::new(0, 36),
+                            range: Range::new(Cursor::new(0, 17), Cursor::new(0, 36)),
                         }),
                     ],
-                    from: Cursor::new(0, 0),
-                    to: Cursor::new(0, 38),
+                    range: Range::new(Cursor::new(0, 0), Cursor::new(0, 38)),
                 })],
             );
         }
